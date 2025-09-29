@@ -50,7 +50,7 @@ function install_module {
 install_module "./" "wm8960-soundcard"
 
 # install dtbos
-#cp wm8960-soundcard.dtbo /boot/overlays
+cp wm8960-soundcard.dtbo /boot/overlays
 
 
 #set kernel moduels
@@ -63,12 +63,16 @@ grep -q "snd-soc-wm8960-soundcard" /etc/modules || \
   
 #set dtoverlays
 sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  /boot/firmware/config.txt || true
+grep -q "dtparam=i2c_arm=on" /boot/firmware/config.txt || \
+  echo "dtparam=i2c_arm=on" >> /boot/firmware/config.txt
+
 sed -i -e 's:#dtparam=i2s=on:dtparam=i2s=on:g'  /boot/firmware/config.txt || true
+grep -q "dtparam=i2s=on" /boot/firmware/config.txt || \
+  echo "dtparam=i2s=on" >> /boot/firmware/config.txt
+
+sed -i -e 's:#dtoverlay=i2s-mmap:dtoverlay=i2s-mmap:g'  /boot/firmware/config.txt || true
 grep -q "dtoverlay=i2s-mmap" /boot/firmware/config.txt || \
   echo "dtoverlay=i2s-mmap" >> /boot/firmware/config.txt
-
-#grep -q "dtparam=i2s=on" /boot/firmware/config.txt || \
-#  echo "dtparam=i2s=on" >> /boot/firmware/config.txt
 
 grep -q "dtoverlay=wm8960-soundcard" /boot/firmware/config.txt || \
   echo "dtoverlay=wm8960-soundcard" >> /boot/firmware/config.txt

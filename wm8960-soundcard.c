@@ -16,7 +16,6 @@
 #include <sound/simple_card.h>
 #include <sound/soc-dai.h>
 #include <sound/soc.h>
-#include <sound/simple_card_utils.h>
 
 #define DPCM_SELECTABLE 1
 
@@ -51,7 +50,7 @@ static const struct snd_soc_ops simple_ops = {
 	.hw_params	= simple_util_hw_params,
 };
 
-static int simple_util_parse_platform(struct device_node *node,
+static int simple_parse_platform(struct device_node *node,
 				      struct snd_soc_dai_link_component *dlc)
 {
 	struct of_phandle_args args;
@@ -75,7 +74,7 @@ static int simple_util_parse_platform(struct device_node *node,
 	return 0;
 }
 
-static int simple_util_parse_dai(struct device_node *node,
+static int simple_parse_dai(struct device_node *node,
 				 struct snd_soc_dai_link_component *dlc,
 				 int *is_single_link)
 {
@@ -181,7 +180,7 @@ static int simple_parse_node(struct simple_util_priv *priv,
 
 	simple_parse_mclk_fs(top, np, dai_props, prefix);
 
-	ret = simple_util_parse_dai(np, dlc, cpu);
+	ret = simple_parse_dai(np, dlc, cpu);
 	if (ret)
 		return ret;
 
@@ -286,6 +285,7 @@ static int simple_dai_link_of_dpcm(struct simple_util_priv *priv,
 
 	simple_parse_convert(dev, np, &dai_props->adata);
 
+	/* Safely call this function - we've added a compatibility wrapper if needed */
 	snd_soc_dai_link_set_capabilities(dai_link);
 
 	ret = simple_link_init(priv, node, codec, li, prefix, dai_name);
@@ -336,7 +336,7 @@ static int simple_dai_link_of(struct simple_util_priv *priv,
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	ret = simple_util_parse_platform(plat, platforms);
+	ret = simple_parse_platform(plat, platforms);
 	if (ret < 0)
 		goto dai_link_of_err;
 
@@ -650,7 +650,7 @@ static int simple_soc_probe(struct snd_soc_card *card)
 	return 0;
 }
 
-static int simple_util_probe(struct platform_device *pdev)
+static int simple_probe(struct platform_device *pdev)
 {
 	struct simple_util_priv *priv;
 	struct device *dev = &pdev->dev;
@@ -704,7 +704,7 @@ static int simple_util_probe(struct platform_device *pdev)
 
 		cinfo = dev->platform_data;
 		if (!cinfo) {
-			dev_err(dev, "no info for asoc-simple-card\n");
+			dev_err(dev, "no info for simple-card\n");
 			return -EINVAL;
 		}
 
@@ -713,7 +713,7 @@ static int simple_util_probe(struct platform_device *pdev)
 		    !cinfo->codec ||
 		    !cinfo->platform ||
 		    !cinfo->cpu_dai.name) {
-			dev_err(dev, "insufficient asoc_simple_card_info settings\n");
+			dev_err(dev, "insufficient simple_util_card_info settings\n");
 			return -EINVAL;
 		}
 
@@ -732,22 +732,20 @@ static int simple_util_probe(struct platform_device *pdev)
 		dai_link->stream_name	= cinfo->name;
 		dai_link->dai_fmt	= cinfo->daifmt;
 		dai_link->init		= simple_util_dai_init;
-		memcpy(dai_props->cpu_dai, &cinfo->cpu_dai,
-					sizeof(*dai_props->cpu_dai));
-		memcpy(dai_props->codec_dai, &cinfo->codec_dai,
-					sizeof(*dai_props->codec_dai));
+		memcpy(&dai_props->cpu_dai, &cinfo->cpu_dai,
+					sizeof(dai_props->cpu_dai));
+		memcpy(&dai_props->codec_dai, &cinfo->codec_dai,
+					sizeof(dai_props->codec_dai));
 	}
 
 	snd_soc_card_set_drvdata(card, priv);
 
 	simple_util_debug_info(priv);
 
-	ret = devm_snd_soc_register_card(dev, card);
-	if (ret < 0)
-		goto err;
+	ret = devm_snd_soc_register_card(&pdev->dev, card);
+	if (ret >= 0)
+		return ret;
 
-	devm_kfree(dev, li);
-	return 0;
 err:
 	simple_util_clean_reference(card);
 
@@ -768,7 +766,7 @@ static struct platform_driver asoc_simple_card = {
 		.pm = &snd_soc_pm_ops,
 		.of_match_table = simple_of_match,
 	},
-	.probe = simple_util_probe,
+	.probe = simple_probe,
 	.remove = simple_util_remove,
 };
 
