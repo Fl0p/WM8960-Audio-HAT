@@ -13,11 +13,11 @@ do
 
     if [ "x${is_1a}" != "x" ] ; then
         echo "install wm8960-soundcard"
-        # Check if overlay is already loaded
-        if ! dtoverlay -l | grep -q "wm8960-soundcard"; then
+        # Check if wm8960 sound card is already available
+        if ! aplay -l 2>/dev/null | grep -q "wm8960"; then
             dtoverlay wm8960-soundcard
         else
-            echo "wm8960-soundcard overlay already loaded"
+            echo "wm8960-soundcard already initialized"
         fi
         sleep 1
 
